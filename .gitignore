@@ -1,0 +1,65 @@
+# ── Python ────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+.venv/
+venv/
+env/
+.env
+!.env.example
+*.pyc
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+coverage.xml
+
+# ── Node / Next.js ────────────────────────────
+node_modules/
+.next/
+out/
+.vercel/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+*.tsbuildinfo
+
+# ── Environment ───────────────────────────────
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+backend/.env
+frontend/.env.local
+
+# ── OS ────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# ── Docker ────────────────────────────────────
+docker-compose.override.yml
+
+# ── IDE ───────────────────────────────────────
+.vscode/
+.idea/
+*.iml
+
+# ── Alembic ───────────────────────────────────
+# Keep migrations tracked
+# alembic/versions/  ← keep this
+
+# ── Celery ───────────────────────────────────
+celerybeat-schedule
+celerybeat.pid
