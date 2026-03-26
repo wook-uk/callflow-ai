@@ -1,14 +1,29 @@
 """
 Async SQLAlchemy engine + session factory
+Auto-converts Railway's postgresql:// URL to postgresql+asyncpg://
 """
+import re
 from collections.abc import AsyncGenerator
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.core.config import settings
 
+
+def _fix_db_url(url: str) -> str:
+    """
+    Railway provides DATABASE_URL as postgresql:// or postgres://
+    SQLAlchemy asyncpg requires postgresql+asyncpg://
+    """
+    url = re.sub(r'^postgres://', 'postgresql+asyncpg://', url)
+    url = re.sub(r'^postgresql://', 'postgresql+asyncpg://', url)
+    return url
+
+
+_db_url = _fix_db_url(settings.DATABASE_URL)
+
 engine = create_async_engine(
-    settings.DATABASE_URL,
+    _db_url,
     pool_size=10,
     max_overflow=20,
     pool_pre_ping=True,
@@ -34,7 +49,7 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 
 
 async def init_db() -> None:
-    """Called at startup — runs Alembic migrations programmatically in dev"""
+    """Called at startup — skips migrations in production (use CLI instead)"""
     if settings.ENV == "development":
         from alembic.config import Config
         from alembic import command
