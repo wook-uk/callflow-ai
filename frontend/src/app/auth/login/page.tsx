@@ -1,153 +1,105 @@
-// app/auth/login/page.tsx
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Eye, EyeOff, Loader2, AlertCircle } from 'lucide-react'
-import { login } from '@/lib/api'
-import { useAuthStore } from '@/hooks/useAuthStore'
+import Link from 'next/link'
 
 export default function LoginPage() {
   const router = useRouter()
-  const { setAuth } = useAuthStore()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [showPw, setShowPw] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError('')
     setLoading(true)
+    setError('')
     try {
-      const data = await login(email, password)
-      setAuth(data.user, data.workspace)
+      const res = await fetch(process.env.NEXT_PUBLIC_API_URL + '/api/v1/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.detail || 'Login failed')
+      localStorage.setItem('cf_token', data.access_token)
       router.push('/dashboard')
     } catch (err: any) {
-      setError(err.message || 'Login failed')
+      setError(err.message)
     } finally {
       setLoading(false)
     }
   }
 
-  const handleGoogle = () => {
-    const CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
-    const REDIRECT = `${window.location.origin}/auth/google/callback`
-    const params = new URLSearchParams({
-      client_id: CLIENT_ID!,
-      redirect_uri: REDIRECT,
-      response_type: 'code',
-      scope: 'openid email profile',
-      access_type: 'offline',
-      prompt: 'select_account',
-    })
-    window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params}`
+  const s = {
+    page: { minHeight: '100vh', background: '#0A0A0B', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' },
+    card: { width: '100%', maxWidth: '400px', padding: '40px', background: '#111113', border: '1px solid #222224', borderRadius: '16px', boxShadow: '0 25px 50px rgba(0,0,0,0.5)' },
+    logo: { display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '32px' },
+    logoBox: { width: '36px', height: '36px', borderRadius: '10px', background: 'linear-gradient(135deg, #5B5EF4, #8B5CF6)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: '16px' },
+    logoText: { color: '#fff', fontWeight: 700, fontSize: '18px' },
+    h1: { color: '#fff', fontSize: '28px', fontWeight: 700, margin: '0 0 8px' },
+    sub: { color: '#888', fontSize: '14px', margin: '0 0 32px' },
+    googleBtn: { width: '100%', padding: '12px', background: '#1A1A1E', border: '1px solid #333', borderRadius: '10px', color: '#fff', fontSize: '14px', fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', marginBottom: '24px' },
+    divider: { display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' },
+    dividerLine: { flex: 1, height: '1px', background: '#222' },
+    dividerText: { color: '#555', fontSize: '13px' },
+    label: { display: 'block', color: '#aaa', fontSize: '13px', fontWeight: 500, marginBottom: '8px' },
+    input: { width: '100%', padding: '12px 14px', background: '#1A1A1E', border: '1px solid #2A2A2E', borderRadius: '10px', color: '#fff', fontSize: '14px', outline: 'none', boxSizing: 'border-box' as const },
+    inputWrap: { position: 'relative' as const, marginBottom: '16px' },
+    eyeBtn: { position: 'absolute' as const, right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#666', cursor: 'pointer', fontSize: '18px', padding: '4px' },
+    submitBtn: { width: '100%', padding: '13px', background: 'linear-gradient(135deg, #5B5EF4, #8B5CF6)', border: 'none', borderRadius: '10px', color: '#fff', fontSize: '15px', fontWeight: 600, cursor: 'pointer', marginTop: '8px' },
+    error: { background: '#2A1515', border: '1px solid #5A1515', borderRadius: '8px', padding: '12px', color: '#ff6b6b', fontSize: '14px', marginBottom: '16px' },
+    footer: { textAlign: 'center' as const, marginTop: '24px', color: '#666', fontSize: '14px' },
+    link: { color: '#5B5EF4', textDecoration: 'none', fontWeight: 500 },
   }
 
   return (
-    <div className="min-h-screen bg-[#0A0A0B] flex items-center justify-center px-4">
-      <div className="w-full max-w-sm">
-        {/* Logo */}
-        <div className="flex items-center gap-2.5 mb-10 justify-center">
-          <div className="w-8 h-8 rounded-xl bg-[#5B5EF4] flex items-center justify-center">
-            <span className="text-[12px] font-bold text-white">CF</span>
-          </div>
-          <span className="font-semibold text-[16px] text-white tracking-tight">CallFlow AI</span>
+    <div style={s.page}>
+      <div style={s.card}>
+        <div style={s.logo}>
+          <div style={s.logoBox}>CF</div>
+          <span style={s.logoText}>CallFlow AI</span>
+        </div>
+        <h1 style={s.h1}>Welcome back</h1>
+        <p style={s.sub}>Sign in to your workspace</p>
+
+        <button style={s.googleBtn} onClick={() => alert('Google OAuth: Add your Google Client ID in Railway Variables')}>
+          <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/><path fill="#FBBC05" d="M3.964 10.71c-.18-.54-.282-1.117-.282-1.71s.102-1.17.282-1.71V4.958H.957C.347 6.173 0 7.548 0 9s.348 2.827.957 4.042l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"/></svg>
+          Continue with Google
+        </button>
+
+        <div style={s.divider}>
+          <div style={s.dividerLine}/>
+          <span style={s.dividerText}>or</span>
+          <div style={s.dividerLine}/>
         </div>
 
-        <div className="bg-white/[0.03] border border-white/[0.07] rounded-2xl p-8">
-          <h1 className="text-[20px] font-semibold text-white mb-1">Welcome back</h1>
-          <p className="text-[13px] text-white/40 mb-7">Sign in to your workspace</p>
+        {error && <div style={s.error}>{error}</div>}
 
-          {/* Google */}
-          <button
-            onClick={handleGoogle}
-            className="w-full flex items-center justify-center gap-3 py-2.5 bg-white/[0.05] hover:bg-white/[0.09] border border-white/[0.1] rounded-xl text-[14px] font-medium text-white/80 transition-colors mb-5"
-          >
-            <GoogleIcon />
-            Continue with Google
+        <form onSubmit={handleSubmit}>
+          <div style={{marginBottom: '16px'}}>
+            <label style={s.label}>Email</label>
+            <input style={s.input} type="email" placeholder="you@company.com" value={email} onChange={e => setEmail(e.target.value)} required />
+          </div>
+          <div style={{marginBottom: '8px'}}>
+            <label style={s.label}>Password</label>
+            <div style={s.inputWrap}>
+              <input style={{...s.input, paddingRight: '44px'}} type={showPassword ? 'text' : 'password'} placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} required />
+              <button type="button" style={s.eyeBtn} onClick={() => setShowPassword(!showPassword)}>{showPassword ? '🙈' : '👁'}</button>
+            </div>
+          </div>
+          <button style={{...s.submitBtn, opacity: loading ? 0.7 : 1}} type="submit" disabled={loading}>
+            {loading ? 'Signing in...' : 'Sign in'}
           </button>
+        </form>
 
-          <div className="flex items-center gap-3 mb-5">
-            <div className="flex-1 h-px bg-white/[0.07]" />
-            <span className="text-[12px] text-white/25">or</span>
-            <div className="flex-1 h-px bg-white/[0.07]" />
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-[12px] text-white/40 mb-1.5">Email</label>
-              <input
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                required
-                autoComplete="email"
-                placeholder="you@company.com"
-                className="w-full bg-white/[0.04] border border-white/[0.08] focus:border-[#5B5EF4]/60 rounded-xl px-3.5 py-2.5 text-[14px] text-white placeholder:text-white/20 outline-none transition-colors"
-              />
-            </div>
-
-            <div>
-              <label className="block text-[12px] text-white/40 mb-1.5">Password</label>
-              <div className="relative">
-                <input
-                  type={showPw ? 'text' : 'password'}
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  required
-                  autoComplete="current-password"
-                  placeholder="••••••••"
-                  className="w-full bg-white/[0.04] border border-white/[0.08] focus:border-[#5B5EF4]/60 rounded-xl px-3.5 py-2.5 pr-10 text-[14px] text-white placeholder:text-white/20 outline-none transition-colors"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPw(v => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-white/25 hover:text-white/50"
-                >
-                  {showPw ? <EyeOff size={15} /> : <Eye size={15} />}
-                </button>
-              </div>
-            </div>
-
-            {error && (
-              <div className="flex items-center gap-2 text-[13px] text-red-400 bg-red-500/10 rounded-lg px-3 py-2">
-                <AlertCircle size={13} />
-                {error}
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-2.5 bg-[#5B5EF4] hover:bg-[#6B6EF8] disabled:opacity-50 rounded-xl text-[14px] font-semibold text-white transition-colors flex items-center justify-center gap-2 mt-1"
-            >
-              {loading ? <Loader2 size={15} className="animate-spin" /> : null}
-              Sign in
-            </button>
-          </form>
-        </div>
-
-        <p className="text-center text-[13px] text-white/30 mt-5">
+        <div style={s.footer}>
           Don&apos;t have an account?{' '}
-          <Link href="/auth/signup" className="text-[#8B8EF8] hover:text-[#A5A7FA]">
-            Sign up free
-          </Link>
-        </p>
+          <Link href="/auth/signup" style={s.link}>Sign up free</Link>
+        </div>
       </div>
     </div>
-  )
-}
-
-function GoogleIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24">
-      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-    </svg>
   )
 }
