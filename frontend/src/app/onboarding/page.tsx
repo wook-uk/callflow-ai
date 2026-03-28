@@ -1,273 +1,125 @@
-// app/onboarding/page.tsx
 'use client'
-
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { CheckCircle2, ExternalLink, ArrowRight, Loader2 } from 'lucide-react'
 
 const STEPS = [
-  { id: 'welcome', title: 'Welcome to CallFlow AI' },
-  { id: 'hubspot', title: 'Connect your CRM' },
-  { id: 'calendar', title: 'Connect your calendar' },
-  { id: 'done', title: "You're all set" },
+  { id: 'workspace', title: 'Name your workspace', desc: 'This is how your team will know you' },
+  { id: 'crm', title: 'Connect your CRM', desc: 'Sync insights automatically after each call' },
+  { id: 'ready', title: "You're all set!", desc: 'Start uploading your sales recordings' },
 ]
 
 export default function OnboardingPage() {
   const router = useRouter()
   const [step, setStep] = useState(0)
-  const [hubspotConnected, setHubspotConnected] = useState(false)
-  const [googleConnected, setGoogleConnected] = useState(false)
+  const [workspace, setWorkspace] = useState('')
+  const [loading, setLoading] = useState(false)
 
-  const next = () => {
-    if (step < STEPS.length - 1) setStep(s => s + 1)
-    else router.push('/dashboard')
+  const s = {
+    page: { minHeight: '100vh', background: '#0A0A0B', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' },
+    card: { width: '100%', maxWidth: '480px', padding: '48px', background: '#111113', border: '1px solid #222224', borderRadius: '20px', boxShadow: '0 25px 50px rgba(0,0,0,0.5)' },
+    stepBar: { display: 'flex', gap: '8px', marginBottom: '40px' },
+    stepDot: (active: boolean, done: boolean) => ({
+      flex: 1, height: '4px', borderRadius: '2px',
+      background: done ? '#5B5EF4' : active ? '#5B5EF4' : '#222',
+      opacity: done ? 1 : active ? 1 : 0.4,
+      transition: 'all 0.3s',
+    }),
+    h1: { color: '#fff', fontSize: '24px', fontWeight: 700, margin: '0 0 8px' },
+    sub: { color: '#888', fontSize: '14px', margin: '0 0 32px' },
+    label: { display: 'block', color: '#aaa', fontSize: '13px', fontWeight: 500, marginBottom: '8px' },
+    input: { width: '100%', padding: '12px 14px', background: '#1A1A1E', border: '1px solid #2A2A2E', borderRadius: '10px', color: '#fff', fontSize: '15px', outline: 'none', boxSizing: 'border-box' as const },
+    btn: { width: '100%', padding: '13px', background: 'linear-gradient(135deg, #5B5EF4, #8B5CF6)', border: 'none', borderRadius: '10px', color: '#fff', fontSize: '15px', fontWeight: 600, cursor: 'pointer', marginTop: '24px' },
+    skipBtn: { background: 'none', border: 'none', color: '#555', fontSize: '14px', cursor: 'pointer', marginTop: '16px', display: 'block', width: '100%', textAlign: 'center' as const },
+    crmOption: (selected: boolean) => ({
+      padding: '16px 20px', background: selected ? '#1A1A2E' : '#1A1A1E',
+      border: selected ? '1px solid #5B5EF4' : '1px solid #2A2A2E',
+      borderRadius: '10px', cursor: 'pointer', marginBottom: '10px',
+      display: 'flex', alignItems: 'center', gap: '14px', transition: 'all 0.15s',
+    }),
+    successIcon: { fontSize: '64px', textAlign: 'center' as const, marginBottom: '24px' },
+  }
+
+  const handleWorkspace = async () => {
+    if (!workspace.trim()) return
+    setLoading(true)
+    try {
+      const token = localStorage.getItem('cf_token')
+      await fetch(process.env.NEXT_PUBLIC_API_URL + '/api/v1/workspace', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        body: JSON.stringify({ name: workspace })
+      })
+    } catch {}
+    setLoading(false)
+    setStep(1)
   }
 
   return (
-    <div className="min-h-screen bg-[#0A0A0B] flex items-center justify-center px-4">
-      <div className="w-full max-w-lg">
-        {/* Progress */}
-        <div className="flex items-center gap-2 mb-10 justify-center">
-          {STEPS.map((s, i) => (
-            <div key={s.id} className="flex items-center gap-2">
-              <div className={`w-2 h-2 rounded-full transition-all ${
-                i < step ? 'bg-[#5B5EF4]' :
-                i === step ? 'bg-[#5B5EF4] scale-125' :
-                'bg-white/15'
-              }`} />
-              {i < STEPS.length - 1 && (
-                <div className={`w-8 h-px transition-colors ${i < step ? 'bg-[#5B5EF4]/50' : 'bg-white/10'}`} />
-              )}
-            </div>
+    <div style={s.page}>
+      <div style={s.card}>
+        <div style={s.stepBar}>
+          {STEPS.map((_, i) => (
+            <div key={i} style={s.stepDot(i === step, i < step)} />
           ))}
         </div>
 
-        <div className="bg-white/[0.03] border border-white/[0.07] rounded-2xl p-8">
-          {/* Step 0: Welcome */}
-          {step === 0 && (
-            <div className="text-center">
-              <div className="w-16 h-16 rounded-2xl bg-[#5B5EF4]/15 flex items-center justify-center mx-auto mb-6">
-                <span className="text-3xl">🎯</span>
-              </div>
-              <h1 className="text-[22px] font-semibold text-white mb-3">Welcome to CallFlow AI</h1>
-              <p className="text-[14px] text-white/50 leading-relaxed mb-8">
-                We&apos;ll help you connect your CRM and calendar so CallFlow can automatically
-                log your sales calls and update deals — saving you 1-2 hours every day.
-              </p>
-              <div className="space-y-3 text-left mb-8">
-                {[
-                  ['🎙️', 'Upload call recordings', 'MP3, MP4, M4A, WAV — up to 500MB'],
-                  ['📝', 'AI-powered summaries', 'BANT/MEDDIC extraction, objections, sentiment'],
-                  ['🔗', 'Auto-sync to HubSpot', 'Notes, tasks, and deal stage updates'],
-                ].map(([emoji, title, desc]) => (
-                  <div key={title} className="flex items-start gap-3 p-3 bg-white/[0.03] rounded-xl">
-                    <span className="text-xl shrink-0">{emoji}</span>
-                    <div>
-                      <p className="text-[14px] font-medium text-white/80">{title}</p>
-                      <p className="text-[12px] text-white/35">{desc}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <button onClick={next} className="w-full py-2.5 bg-[#5B5EF4] hover:bg-[#6B6EF8] rounded-xl text-[14px] font-semibold text-white transition-colors flex items-center justify-center gap-2">
-                Get started <ArrowRight size={15} />
-              </button>
-            </div>
-          )}
+        {step === 0 && (
+          <>
+            <div style={{ fontSize: '36px', marginBottom: '16px' }}>🏢</div>
+            <h1 style={s.h1}>{STEPS[0].title}</h1>
+            <p style={s.sub}>{STEPS[0].desc}</p>
+            <label style={s.label}>Workspace name</label>
+            <input style={s.input} type="text" placeholder="Acme Corp Sales" value={workspace}
+              onChange={e => setWorkspace(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleWorkspace()} autoFocus />
+            <button style={{ ...s.btn, opacity: loading || !workspace.trim() ? 0.6 : 1 }}
+              onClick={handleWorkspace} disabled={loading || !workspace.trim()}>
+              {loading ? 'Saving...' : 'Continue →'}
+            </button>
+          </>
+        )}
 
-          {/* Step 1: HubSpot */}
-          {step === 1 && (
-            <div>
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 rounded-xl bg-[#FF7A59]/15 flex items-center justify-center">
-                  <span className="text-xl">🟠</span>
-                </div>
+        {step === 1 && (
+          <>
+            <div style={{ fontSize: '36px', marginBottom: '16px' }}>🔗</div>
+            <h1 style={s.h1}>{STEPS[1].title}</h1>
+            <p style={s.sub}>{STEPS[1].desc}</p>
+            {[
+              { icon: '🟠', name: 'HubSpot', desc: 'Most popular CRM for sales teams' },
+              { icon: '☁️', name: 'Salesforce', desc: 'Enterprise CRM platform' },
+              { icon: '📊', name: 'Pipedrive', desc: 'Sales pipeline management' },
+            ].map(crm => (
+              <div key={crm.name} style={s.crmOption(false)} onClick={() => alert('Configure ' + crm.name + ' in Settings → Integrations after setup')}>
+                <span style={{ fontSize: '24px' }}>{crm.icon}</span>
                 <div>
-                  <h2 className="text-[18px] font-semibold text-white">Connect HubSpot</h2>
-                  <p className="text-[13px] text-white/40">CallFlow will create notes, tasks and update deals</p>
+                  <div style={{ color: '#fff', fontWeight: 600, fontSize: '14px' }}>{crm.name}</div>
+                  <div style={{ color: '#666', fontSize: '12px', marginTop: '2px' }}>{crm.desc}</div>
                 </div>
+                <div style={{ marginLeft: 'auto', color: '#555', fontSize: '12px' }}>Connect →</div>
               </div>
+            ))}
+            <button style={s.btn} onClick={() => setStep(2)}>Continue →</button>
+            <button style={s.skipBtn} onClick={() => setStep(2)}>Skip for now</button>
+          </>
+        )}
 
-              {hubspotConnected ? (
-                <div className="flex items-center gap-3 p-4 bg-green-500/10 border border-green-500/20 rounded-xl mb-6">
-                  <CheckCircle2 size={18} className="text-green-400 shrink-0" />
-                  <div>
-                    <p className="text-[14px] font-medium text-green-400">HubSpot connected</p>
-                    <p className="text-[12px] text-white/40">Contacts, deals, notes and tasks are ready to sync</p>
-                  </div>
+        {step === 2 && (
+          <>
+            <div style={s.successIcon}>🎉</div>
+            <h1 style={{ ...s.h1, textAlign: 'center', fontSize: '26px' }}>{STEPS[2].title}</h1>
+            <p style={{ ...s.sub, textAlign: 'center', marginBottom: '16px' }}>{STEPS[2].desc}</p>
+            <div style={{ background: '#1A1A1E', borderRadius: '12px', padding: '20px', marginBottom: '24px' }}>
+              {['Upload a call recording', 'Get AI-powered transcript', 'Receive sales insights', 'Auto-sync to your CRM'].map((item, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '8px 0', color: '#ccc', fontSize: '14px' }}>
+                  <span style={{ color: '#5B5EF4', fontWeight: 700 }}>✓</span> {item}
                 </div>
-              ) : (
-                <HubSpotConnectButton onConnected={() => setHubspotConnected(true)} />
-              )}
-
-              <div className="mt-6 p-4 bg-white/[0.02] rounded-xl border border-white/[0.05]">
-                <p className="text-[12px] text-white/30 leading-relaxed">
-                  <strong className="text-white/50">Required permissions:</strong>{' '}
-                  Read and write access to contacts, companies, deals, notes, and tasks.
-                  We never delete or overwrite existing data.
-                </p>
-              </div>
-
-              <div className="flex gap-3 mt-6">
-                <button
-                  onClick={next}
-                  className="flex-1 py-2.5 bg-white/[0.05] hover:bg-white/[0.08] border border-white/[0.08] rounded-xl text-[14px] text-white/50 transition-colors"
-                >
-                  Skip for now
-                </button>
-                <button
-                  onClick={next}
-                  disabled={!hubspotConnected}
-                  className="flex-1 py-2.5 bg-[#5B5EF4] hover:bg-[#6B6EF8] disabled:opacity-40 rounded-xl text-[14px] font-semibold text-white transition-colors flex items-center justify-center gap-2"
-                >
-                  Continue <ArrowRight size={15} />
-                </button>
-              </div>
+              ))}
             </div>
-          )}
-
-          {/* Step 2: Google Calendar */}
-          {step === 2 && (
-            <div>
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 rounded-xl bg-blue-500/15 flex items-center justify-center">
-                  <span className="text-xl">📅</span>
-                </div>
-                <div>
-                  <h2 className="text-[18px] font-semibold text-white">Connect Google Calendar</h2>
-                  <p className="text-[13px] text-white/40">Auto-detect sales calls from your calendar</p>
-                </div>
-              </div>
-
-              {googleConnected ? (
-                <div className="flex items-center gap-3 p-4 bg-green-500/10 border border-green-500/20 rounded-xl mb-6">
-                  <CheckCircle2 size={18} className="text-green-400 shrink-0" />
-                  <div>
-                    <p className="text-[14px] font-medium text-green-400">Google Calendar connected</p>
-                    <p className="text-[12px] text-white/40">We&apos;ll detect calls with &quot;demo&quot;, &quot;meeting&quot; keywords</p>
-                  </div>
-                </div>
-              ) : (
-                <GoogleCalendarButton onConnected={() => setGoogleConnected(true)} />
-              )}
-
-              <p className="text-[12px] text-white/25 mt-4 text-center">
-                Read-only access. We never modify your calendar.
-              </p>
-
-              <div className="flex gap-3 mt-6">
-                <button
-                  onClick={next}
-                  className="flex-1 py-2.5 bg-white/[0.05] hover:bg-white/[0.08] border border-white/[0.08] rounded-xl text-[14px] text-white/50 transition-colors"
-                >
-                  Skip for now
-                </button>
-                <button
-                  onClick={next}
-                  className="flex-1 py-2.5 bg-[#5B5EF4] hover:bg-[#6B6EF8] rounded-xl text-[14px] font-semibold text-white transition-colors flex items-center justify-center gap-2"
-                >
-                  Continue <ArrowRight size={15} />
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Step 3: Done */}
-          {step === 3 && (
-            <div className="text-center">
-              <div className="w-16 h-16 rounded-2xl bg-green-500/15 flex items-center justify-center mx-auto mb-6">
-                <CheckCircle2 size={32} className="text-green-400" />
-              </div>
-              <h2 className="text-[22px] font-semibold text-white mb-3">You&apos;re all set!</h2>
-              <p className="text-[14px] text-white/50 mb-8">
-                Upload your first sales call recording to get AI-powered insights in minutes.
-              </p>
-              <button
-                onClick={next}
-                className="w-full py-2.5 bg-[#5B5EF4] hover:bg-[#6B6EF8] rounded-xl text-[14px] font-semibold text-white transition-colors"
-              >
-                Go to Dashboard
-              </button>
-            </div>
-          )}
-        </div>
+            <button style={s.btn} onClick={() => router.push('/dashboard')}>
+              Go to Dashboard →
+            </button>
+          </>
+        )}
       </div>
     </div>
-  )
-}
-
-function HubSpotConnectButton({ onConnected }: { onConnected: () => void }) {
-  const [loading, setLoading] = useState(false)
-
-  const connect = async () => {
-    setLoading(true)
-    try {
-      const res = await fetch('/api/v1/integrations/hubspot/oauth-url', {
-        headers: { Authorization: `Bearer ${localStorage.getItem('cf_token')}` },
-      })
-      const { oauth_url } = await res.json()
-      // Open in popup
-      const popup = window.open(oauth_url, 'hubspot_oauth', 'width=600,height=700')
-      // Listen for completion message
-      const handler = (e: MessageEvent) => {
-        if (e.data?.type === 'HUBSPOT_CONNECTED') {
-          window.removeEventListener('message', handler)
-          popup?.close()
-          onConnected()
-          setLoading(false)
-        }
-      }
-      window.addEventListener('message', handler)
-    } catch {
-      setLoading(false)
-    }
-  }
-
-  return (
-    <button
-      onClick={connect}
-      disabled={loading}
-      className="w-full flex items-center justify-center gap-3 py-3 bg-[#FF7A59]/10 hover:bg-[#FF7A59]/15 border border-[#FF7A59]/20 rounded-xl text-[14px] font-medium text-[#FF9A7A] transition-colors"
-    >
-      {loading ? <Loader2 size={15} className="animate-spin" /> : <ExternalLink size={15} />}
-      Connect HubSpot
-    </button>
-  )
-}
-
-function GoogleCalendarButton({ onConnected }: { onConnected: () => void }) {
-  const [loading, setLoading] = useState(false)
-
-  const connect = async () => {
-    setLoading(true)
-    try {
-      const res = await fetch('/api/v1/integrations/google/oauth-url', {
-        headers: { Authorization: `Bearer ${localStorage.getItem('cf_token')}` },
-      })
-      const { oauth_url } = await res.json()
-      const popup = window.open(oauth_url, 'google_oauth', 'width=600,height=700')
-      const handler = (e: MessageEvent) => {
-        if (e.data?.type === 'GOOGLE_CONNECTED') {
-          window.removeEventListener('message', handler)
-          popup?.close()
-          onConnected()
-          setLoading(false)
-        }
-      }
-      window.addEventListener('message', handler)
-    } catch {
-      setLoading(false)
-    }
-  }
-
-  return (
-    <button
-      onClick={connect}
-      disabled={loading}
-      className="w-full flex items-center justify-center gap-3 py-3 bg-blue-500/10 hover:bg-blue-500/15 border border-blue-500/20 rounded-xl text-[14px] font-medium text-blue-400 transition-colors"
-    >
-      {loading ? <Loader2 size={15} className="animate-spin" /> : <ExternalLink size={15} />}
-      Connect Google Calendar
-    </button>
   )
 }
