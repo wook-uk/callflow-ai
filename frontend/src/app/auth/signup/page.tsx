@@ -1,142 +1,68 @@
-// app/auth/signup/page.tsx
 'use client'
-
 import { useState } from 'react'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Loader2, AlertCircle, CheckCircle2 } from 'lucide-react'
-import { signup } from '@/lib/api'
-import { useAuthStore } from '@/hooks/useAuthStore'
-
-const PASSWORD_RULES = [
-  { label: '8+ characters', test: (p: string) => p.length >= 8 },
-  { label: 'Uppercase letter', test: (p: string) => /[A-Z]/.test(p) },
-  { label: 'Number', test: (p: string) => /[0-9]/.test(p) },
-]
+import Link from 'next/link'
+import React from 'react'
 
 export default function SignupPage() {
   const router = useRouter()
-  const { setAuth } = useAuthStore()
-  const [form, setForm] = useState({
-    full_name: '', email: '', password: '', workspace_name: '',
-  })
+  const [form, setForm] = useState({ full_name: '', email: '', password: '' })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [pwFocused, setPwFocused] = useState(false)
 
-  const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
-    setForm(f => ({ ...f, [k]: e.target.value }))
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError('')
-    setLoading(true)
-    try {
-      const data = await signup(form.email, form.password, form.full_name)
-      setAuth(data.user, data.workspace)
-      // First-time user → onboarding
-      router.push('/onboarding')
-    } catch (err: any) {
-      setError(err.message || 'Signup failed')
-    } finally {
-      setLoading(false)
-    }
+  const s = {
+    page: { minHeight: '100vh', background: '#0A0A0B', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' },
+    card: { width: '100%', maxWidth: '420px', padding: '40px', background: '#111113', border: '1px solid #222224', borderRadius: '16px', boxShadow: '0 25px 50px rgba(0,0,0,0.5)' },
+    logoBox: { width: '36px', height: '36px', borderRadius: '10px', background: 'linear-gradient(135deg, #5B5EF4, #8B5CF6)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: '16px' },
+    h1: { color: '#fff', fontSize: '26px', fontWeight: 700, margin: '0 0 8px 0' },
+    sub: { color: '#888', fontSize: '14px', margin: '0 0 28px 0' },
+    label: { display: 'block', color: '#aaa', fontSize: '13px', fontWeight: 500, marginBottom: '7px' },
+    input: { width: '100%', padding: '11px 14px', background: '#1A1A1E', border: '1px solid #2A2A2E', borderRadius: '10px', color: '#fff', fontSize: '14px', outline: 'none', boxSizing: 'border-box' as const, marginBottom: '16px' },
+    btn: { width: '100%', padding: '13px', background: 'linear-gradient(135deg, #5B5EF4, #8B5CF6)', border: 'none', borderRadius: '10px', color: '#fff', fontSize: '15px', fontWeight: 600, cursor: 'pointer', marginTop: '4px' },
+    errBox: { background: '#2A1515', border: '1px solid #5A1515', borderRadius: '8px', padding: '11px 14px', color: '#ff6b6b', fontSize: '14px', marginBottom: '16px' },
+    badge: { display: 'inline-block', background: '#1A1A2E', border: '1px solid #2A2A4E', borderRadius: '20px', padding: '4px 12px', color: '#8B8BF8', fontSize: '12px', fontWeight: 500, marginBottom: '20px' },
   }
 
-  const pwOk = PASSWORD_RULES.every(r => r.test(form.password))
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault(); setLoading(true); setError('')
+    try {
+      const res = await fetch(process.env.NEXT_PUBLIC_API_URL + '/api/v1/auth/signup', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.detail || 'Signup failed')
+      localStorage.setItem('cf_token', data.access_token)
+      router.push('/onboarding')
+    } catch (err: any) { setError(err.message) }
+    finally { setLoading(false) }
+  }
 
   return (
-    <div className="min-h-screen bg-[#0A0A0B] flex items-center justify-center px-4 py-12">
-      <div className="w-full max-w-sm">
-        <div className="flex items-center gap-2.5 mb-10 justify-center">
-          <div className="w-8 h-8 rounded-xl bg-[#5B5EF4] flex items-center justify-center">
-            <span className="text-[12px] font-bold text-white">CF</span>
-          </div>
-          <span className="font-semibold text-[16px] text-white tracking-tight">CallFlow AI</span>
+    <div style={s.page}>
+      <div style={s.card}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '28px' }}>
+          <div style={s.logoBox}>CF</div>
+          <span style={{ color: '#fff', fontWeight: 700, fontSize: '18px' }}>CallFlow AI</span>
         </div>
-
-        <div className="bg-white/[0.03] border border-white/[0.07] rounded-2xl p-8">
-          <h1 className="text-[20px] font-semibold text-white mb-1">Create your workspace</h1>
-          <p className="text-[13px] text-white/40 mb-7">Start a 14-day free trial. No credit card required.</p>
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {[
-              { key: 'full_name', label: 'Your name', placeholder: 'Jane Smith', type: 'text' },
-              { key: 'email', label: 'Work email', placeholder: 'jane@company.com', type: 'email' },
-              { key: 'workspace_name', label: 'Company / team name', placeholder: 'Acme Corp Sales', type: 'text' },
-            ].map(field => (
-              <div key={field.key}>
-                <label className="block text-[12px] text-white/40 mb-1.5">{field.label}</label>
-                <input
-                  type={field.type}
-                  required
-                  value={form[field.key as keyof typeof form]}
-                  onChange={set(field.key as keyof typeof form)}
-                  placeholder={field.placeholder}
-                  className="w-full bg-white/[0.04] border border-white/[0.08] focus:border-[#5B5EF4]/60 rounded-xl px-3.5 py-2.5 text-[14px] text-white placeholder:text-white/20 outline-none transition-colors"
-                />
-              </div>
-            ))}
-
-            <div>
-              <label className="block text-[12px] text-white/40 mb-1.5">Password</label>
-              <input
-                type="password"
-                required
-                value={form.password}
-                onChange={set('password')}
-                onFocus={() => setPwFocused(true)}
-                placeholder="••••••••"
-                className="w-full bg-white/[0.04] border border-white/[0.08] focus:border-[#5B5EF4]/60 rounded-xl px-3.5 py-2.5 text-[14px] text-white placeholder:text-white/20 outline-none transition-colors"
-              />
-              {(pwFocused || form.password) && (
-                <div className="mt-2 space-y-1">
-                  {PASSWORD_RULES.map(rule => {
-                    const ok = rule.test(form.password)
-                    return (
-                      <div key={rule.label} className="flex items-center gap-1.5">
-                        <CheckCircle2
-                          size={11}
-                          className={ok ? 'text-green-400' : 'text-white/15'}
-                        />
-                        <span className={`text-[11px] ${ok ? 'text-green-400' : 'text-white/25'}`}>
-                          {rule.label}
-                        </span>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-
-            {error && (
-              <div className="flex items-center gap-2 text-[13px] text-red-400 bg-red-500/10 rounded-lg px-3 py-2">
-                <AlertCircle size={13} />
-                {error}
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={loading || !pwOk}
-              className="w-full py-2.5 bg-[#5B5EF4] hover:bg-[#6B6EF8] disabled:opacity-40 rounded-xl text-[14px] font-semibold text-white transition-colors flex items-center justify-center gap-2 mt-1"
-            >
-              {loading && <Loader2 size={15} className="animate-spin" />}
-              Create workspace
-            </button>
-          </form>
-
-          <p className="text-[11px] text-white/20 text-center mt-5">
-            By signing up you agree to our{' '}
-            <a href="/terms" className="underline hover:text-white/40">Terms</a>
-            {' '}and{' '}
-            <a href="/privacy" className="underline hover:text-white/40">Privacy Policy</a>
-          </p>
-        </div>
-
-        <p className="text-center text-[13px] text-white/30 mt-5">
+        <div style={s.badge}>✨ Free 14-day trial · No credit card</div>
+        <h1 style={s.h1}>Create your account</h1>
+        <p style={s.sub}>AI-powered insights for every sales call</p>
+        {error && <div style={s.errBox}>{error}</div>}
+        <form onSubmit={handleSubmit}>
+          <label style={s.label}>Full name</label>
+          <input style={s.input} type="text" placeholder="John Smith" value={form.full_name} onChange={e => setForm({...form, full_name: e.target.value})} required />
+          <label style={s.label}>Work email</label>
+          <input style={s.input} type="email" placeholder="you@company.com" value={form.email} onChange={e => setForm({...form, email: e.target.value})} required />
+          <label style={s.label}>Password</label>
+          <input style={s.input} type="password" placeholder="Min. 8 characters" value={form.password} onChange={e => setForm({...form, password: e.target.value})} required minLength={8} />
+          <button style={{ ...s.btn, opacity: loading ? 0.7 : 1 }} type="submit" disabled={loading}>
+            {loading ? 'Creating account...' : 'Create free account →'}
+          </button>
+        </form>
+        <p style={{ textAlign: 'center', marginTop: '24px', color: '#666', fontSize: '14px' }}>
           Already have an account?{' '}
-          <Link href="/auth/login" className="text-[#8B8EF8] hover:text-[#A5A7FA]">Sign in</Link>
+          <Link href="/auth/login" style={{ color: '#5B5EF4', textDecoration: 'none', fontWeight: 500 }}>Sign in</Link>
         </p>
       </div>
     </div>
