@@ -1,133 +1,161 @@
-// app/dashboard/page.tsx
 'use client'
-
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Upload, Clock, TrendingUp, CheckCircle, AlertCircle, Loader2, Plus } from 'lucide-react'
-import { useCalls } from '@/hooks/useCalls'
-import { CallCard } from '@/components/dashboard/CallCard'
-import { UploadModal } from '@/components/dashboard/UploadModal'
-import { StatsBar } from '@/components/dashboard/StatsBar'
+
+const s = {
+  page: { minHeight: '100vh', background: '#0A0A0B', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', color: '#fff' },
+  sidebar: { position: 'fixed' as const, left: 0, top: 0, bottom: 0, width: '220px', background: '#111113', borderRight: '1px solid #1E1E20', padding: '20px 0', display: 'flex', flexDirection: 'column' as const },
+  logo: { display: 'flex', alignItems: 'center', gap: '10px', padding: '0 20px 24px', borderBottom: '1px solid #1E1E20', marginBottom: '16px' },
+  logoBox: { width: '32px', height: '32px', borderRadius: '8px', background: 'linear-gradient(135deg, #5B5EF4, #8B5CF6)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: '14px' },
+  navItem: { display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 20px', color: '#888', fontSize: '14px', cursor: 'pointer', borderRadius: '8px', margin: '2px 8px', transition: 'all 0.15s' },
+  navActive: { background: '#1A1A1E', color: '#fff' },
+  main: { marginLeft: '220px', padding: '32px' },
+  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' },
+  uploadBtn: { display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 20px', background: 'linear-gradient(135deg, #5B5EF4, #8B5CF6)', border: 'none', borderRadius: '10px', color: '#fff', fontSize: '14px', fontWeight: 600, cursor: 'pointer' },
+  statsGrid: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '32px' },
+  statCard: { background: '#111113', border: '1px solid #1E1E20', borderRadius: '12px', padding: '20px' },
+  statNum: { fontSize: '28px', fontWeight: 700, color: '#fff', margin: '0 0 4px' },
+  statLabel: { fontSize: '13px', color: '#666' },
+  section: { background: '#111113', border: '1px solid #1E1E20', borderRadius: '12px', padding: '24px' },
+  sectionTitle: { fontSize: '16px', fontWeight: 600, color: '#fff', margin: '0 0 20px' },
+  emptyState: { textAlign: 'center' as const, padding: '60px 20px', color: '#555' },
+  uploadArea: { border: '2px dashed #2A2A2E', borderRadius: '12px', padding: '48px', textAlign: 'center' as const, cursor: 'pointer', transition: 'all 0.2s' },
+}
 
 export default function DashboardPage() {
   const router = useRouter()
-  const [showUpload, setShowUpload] = useState(false)
-  const [statusFilter, setStatusFilter] = useState<string | null>(null)
-  const { calls, isLoading, mutate } = useCalls(statusFilter)
+  const [calls, setCalls] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [uploading, setUploading] = useState(false)
 
-  const completedCalls = calls?.filter(c => c.status === 'completed').length ?? 0
-  const pendingCalls = calls?.filter(c =>
-    ['uploading', 'transcribing', 'analyzing'].includes(c.status)
-  ).length ?? 0
+  useEffect(() => {
+    const token = localStorage.getItem('cf_token')
+    if (!token) { router.push('/auth/login'); return }
+    fetch(process.env.NEXT_PUBLIC_API_URL + '/api/v1/calls', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    }).then(r => r.json()).then(d => { setCalls(d.calls || []); setLoading(false) })
+    .catch(() => setLoading(false))
+  }, [router])
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    const token = localStorage.getItem('cf_token')
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('title', file.name.replace(/\.[^/.]+$/, ''))
+    try {
+      const res = await fetch(process.env.NEXT_PUBLIC_API_URL + '/api/v1/calls/upload', {
+        method: 'POST', headers: { 'Authorization': 'Bearer ' + token }, body: formData
+      })
+      const data = await res.json()
+      if (res.ok) setCalls(prev => [data, ...prev])
+    } finally { setUploading(false) }
+  }
+
+  const statusColors: Record<string, string> = {
+    completed: '#10B981', processing: '#F59E0B', transcribing: '#6366F1',
+    failed: '#EF4444', uploading: '#8B5CF6',
+  }
 
   return (
-    <div className="min-h-screen bg-[#0A0A0B] text-white">
-      {/* Top nav */}
-      <nav className="border-b border-white/[0.06] px-6 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-7 h-7 rounded-lg bg-[#5B5EF4] flex items-center justify-center">
-            <span className="text-[11px] font-bold">CF</span>
-          </div>
-          <span className="font-semibold text-[15px] tracking-tight">CallFlow AI</span>
+    <div style={s.page}>
+      <div style={s.sidebar}>
+        <div style={s.logo}>
+          <div style={s.logoBox}>CF</div>
+          <span style={{ fontWeight: 700, fontSize: '16px' }}>CallFlow AI</span>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setShowUpload(true)}
-            className="flex items-center gap-2 px-3 py-1.5 bg-[#5B5EF4] hover:bg-[#6B6EF8] rounded-lg text-[13px] font-medium transition-colors"
-          >
-            <Plus size={14} />
-            Upload Call
+        <div style={{ padding: '0 8px', flex: 1 }}>
+          {[
+            { icon: '⚡', label: 'Calls', active: true },
+            { icon: '💡', label: 'Insights', active: false },
+            { icon: '🔗', label: 'Integrations', active: false },
+            { icon: '⚙️', label: 'Settings', active: false },
+          ].map(item => (
+            <div key={item.label} style={{ ...s.navItem, ...(item.active ? s.navActive : {}) }}>
+              <span>{item.icon}</span> {item.label}
+            </div>
+          ))}
+        </div>
+        <div style={{ padding: '16px 20px', borderTop: '1px solid #1E1E20' }}>
+          <button onClick={() => { localStorage.removeItem('cf_token'); router.push('/auth/login') }}
+            style={{ background: 'none', border: 'none', color: '#666', fontSize: '14px', cursor: 'pointer' }}>
+            → Sign out
           </button>
         </div>
-      </nav>
+      </div>
 
-      <main className="max-w-5xl mx-auto px-6 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-2xl font-semibold tracking-tight mb-1">Sales Calls</h1>
-          <p className="text-white/40 text-[14px]">
-            Upload recordings to get AI-powered insights and CRM updates
-          </p>
+      <div style={s.main}>
+        <div style={s.header}>
+          <div>
+            <h1 style={{ fontSize: '22px', fontWeight: 700, margin: '0 0 4px' }}>Sales Calls</h1>
+            <p style={{ color: '#666', fontSize: '14px', margin: 0 }}>Upload recordings to get AI-powered insights</p>
+          </div>
+          <label style={{ ...s.uploadBtn, opacity: uploading ? 0.7 : 1 }}>
+            {uploading ? '⏳ Processing...' : '⬆ Upload Recording'}
+            <input type="file" accept="audio/*,video/*" style={{ display: 'none' }} onChange={handleUpload} disabled={uploading} />
+          </label>
         </div>
 
-        {/* Stats */}
-        <StatsBar
-          total={calls?.length ?? 0}
-          completed={completedCalls}
-          pending={pendingCalls}
-        />
-
-        {/* Filter tabs */}
-        <div className="flex gap-1 mb-6 mt-8">
+        <div style={s.statsGrid}>
           {[
-            { label: 'All', value: null },
-            { label: 'Processing', value: 'analyzing' },
-            { label: 'Completed', value: 'completed' },
-            { label: 'Failed', value: 'failed' },
-          ].map(tab => (
-            <button
-              key={tab.label}
-              onClick={() => setStatusFilter(tab.value)}
-              className={`px-3 py-1.5 rounded-md text-[13px] font-medium transition-colors ${
-                statusFilter === tab.value
-                  ? 'bg-white/10 text-white'
-                  : 'text-white/40 hover:text-white/70'
-              }`}
-            >
-              {tab.label}
-            </button>
+            { num: calls.length, label: 'Total Calls' },
+            { num: calls.filter(c => c.status === 'completed').length, label: 'Analyzed' },
+            { num: calls.filter(c => c.crm_synced).length, label: 'CRM Synced' },
+          ].map(stat => (
+            <div key={stat.label} style={s.statCard}>
+              <div style={s.statNum}>{stat.num}</div>
+              <div style={s.statLabel}>{stat.label}</div>
+            </div>
           ))}
         </div>
 
-        {/* Call list */}
-        {isLoading ? (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 size={20} className="animate-spin text-white/30" />
-          </div>
-        ) : calls?.length === 0 ? (
-          <EmptyState onUpload={() => setShowUpload(true)} />
-        ) : (
-          <div className="space-y-2">
-            {calls?.map(call => (
-              <CallCard
-                key={call.id}
-                call={call}
-                onClick={() => router.push(`/dashboard/calls/${call.id}`)}
-              />
-            ))}
-          </div>
-        )}
-      </main>
-
-      {showUpload && (
-        <UploadModal
-          onClose={() => setShowUpload(false)}
-          onSuccess={() => {
-            setShowUpload(false)
-            mutate()
-          }}
-        />
-      )}
-    </div>
-  )
-}
-
-function EmptyState({ onUpload }: { onUpload: () => void }) {
-  return (
-    <div className="text-center py-20 border border-dashed border-white/[0.08] rounded-xl">
-      <div className="w-12 h-12 rounded-xl bg-white/[0.04] flex items-center justify-center mx-auto mb-4">
-        <Upload size={20} className="text-white/30" />
+        <div style={s.section}>
+          <div style={s.sectionTitle}>Recent Calls</div>
+          {loading ? (
+            <div style={s.emptyState}>Loading...</div>
+          ) : calls.length === 0 ? (
+            <div style={s.uploadArea}>
+              <div style={{ fontSize: '40px', marginBottom: '16px' }}>🎙️</div>
+              <p style={{ color: '#aaa', fontSize: '16px', fontWeight: 600, margin: '0 0 8px' }}>No calls yet</p>
+              <p style={{ color: '#555', fontSize: '14px', margin: 0 }}>Upload your first sales recording to get started</p>
+            </div>
+          ) : (
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid #1E1E20' }}>
+                  {['Title', 'Status', 'Duration', 'Date', ''].map(h => (
+                    <th key={h} style={{ padding: '10px 12px', textAlign: 'left' as const, color: '#666', fontSize: '12px', fontWeight: 500 }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {calls.map(call => (
+                  <tr key={call.id} style={{ borderBottom: '1px solid #161618', cursor: 'pointer' }}
+                    onClick={() => router.push('/dashboard/calls/' + call.id)}>
+                    <td style={{ padding: '14px 12px', fontSize: '14px', color: '#fff' }}>{call.title || 'Untitled'}</td>
+                    <td style={{ padding: '14px 12px' }}>
+                      <span style={{ padding: '3px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: 500,
+                        background: (statusColors[call.status] || '#555') + '20',
+                        color: statusColors[call.status] || '#888' }}>
+                        {call.status}
+                      </span>
+                    </td>
+                    <td style={{ padding: '14px 12px', color: '#666', fontSize: '14px' }}>
+                      {call.duration ? Math.round(call.duration / 60) + 'm' : '—'}
+                    </td>
+                    <td style={{ padding: '14px 12px', color: '#666', fontSize: '14px' }}>
+                      {call.created_at ? new Date(call.created_at).toLocaleDateString() : '—'}
+                    </td>
+                    <td style={{ padding: '14px 12px', color: '#5B5EF4', fontSize: '14px' }}>View →</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
       </div>
-      <h3 className="font-medium text-white/60 mb-1">No calls yet</h3>
-      <p className="text-white/30 text-[13px] mb-6">
-        Upload your first sales call recording to get started
-      </p>
-      <button
-        onClick={onUpload}
-        className="px-4 py-2 bg-[#5B5EF4] hover:bg-[#6B6EF8] rounded-lg text-[13px] font-medium transition-colors"
-      >
-        Upload Recording
-      </button>
     </div>
   )
 }
