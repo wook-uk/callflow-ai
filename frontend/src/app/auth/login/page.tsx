@@ -12,7 +12,6 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [showPassword, setShowPassword] = useState(false)
 
-  // Google OAuth 콜백 처리
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const token = params.get('token')
@@ -24,10 +23,10 @@ export default function LoginPage() {
 
   const handleGoogleLogin = () => {
     const clientId = '439620463359-dpb00b8gf7ksekjo78hh518oq8u9onoe.apps.googleusercontent.com'
-    const redirectUri = encodeURIComponent(process.env.NEXT_PUBLIC_API_URL + '/api/v1/auth/google/callback')
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || ''
+    const redirectUri = encodeURIComponent(apiUrl + '/api/v1/auth/google/callback')
     const scope = encodeURIComponent('openid email profile')
-    const state = encodeURIComponent(window.location.origin + '/auth/login')
-    const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}&state=${state}&access_type=offline&prompt=select_account`
+    const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}&access_type=offline&prompt=select_account`
     window.location.href = url
   }
 
@@ -35,7 +34,7 @@ export default function LoginPage() {
     e.preventDefault()
     setLoading(true); setError('')
     try {
-      const res = await fetch(process.env.NEXT_PUBLIC_API_URL + '/api/v1/auth/login', {
+      const res = await fetch((process.env.NEXT_PUBLIC_API_URL || '') + '/api/v1/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
@@ -54,10 +53,9 @@ export default function LoginPage() {
     logoBox: { width: '36px', height: '36px', borderRadius: '10px', background: 'linear-gradient(135deg, #5B5EF4, #8B5CF6)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: '16px' },
     h1: { color: '#fff', fontSize: '28px', fontWeight: 700, margin: '0 0 8px' },
     sub: { color: '#888', fontSize: '14px', margin: '0 0 32px' },
-    googleBtn: { width: '100%', padding: '12px', background: '#1A1A1E', border: '1px solid #333', borderRadius: '10px', color: '#fff', fontSize: '14px', fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', marginBottom: '24px', transition: 'border-color 0.2s' },
+    googleBtn: { width: '100%', padding: '12px', background: '#1A1A1E', border: '1px solid #333', borderRadius: '10px', color: '#fff', fontSize: '14px', fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', marginBottom: '24px' },
     divider: { display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' },
     dividerLine: { flex: 1, height: '1px', background: '#222' },
-    dividerText: { color: '#555', fontSize: '13px' },
     label: { display: 'block', color: '#aaa', fontSize: '13px', fontWeight: 500, marginBottom: '8px' },
     input: { width: '100%', padding: '12px 14px', background: '#1A1A1E', border: '1px solid #2A2A2E', borderRadius: '10px', color: '#fff', fontSize: '14px', outline: 'none', boxSizing: 'border-box' as const },
     inputWrap: { position: 'relative' as const, marginBottom: '16px' },
@@ -89,7 +87,7 @@ export default function LoginPage() {
 
         <div style={s.divider}>
           <div style={s.dividerLine}/>
-          <span style={s.dividerText}>or</span>
+          <span style={{ color: '#555', fontSize: '13px' }}>or</span>
           <div style={s.dividerLine}/>
         </div>
 
